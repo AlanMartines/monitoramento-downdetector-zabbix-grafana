@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 
 import sys
-import re
+import ssl
 import random
+import re
 from bs4 import BeautifulSoup
-import cloudscraper
 
+# Define lists for user agents and proxies
 user_agent_list = [
     # Chrome
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -43,16 +44,17 @@ proxy_list = [
     'http://191.7.8.246:80'
 ]
 
-PARAMS = {
-    'Relatórios de usuários indicam que não há problemas': 'success',
-    'Relatórios de usuários indicam potenciais problemas': 'warning',
-    'Relatórios de usuários indicam problemas': 'danger'
-}
+# Determine the best crawler based on SSL version
+if ssl.OPENSSL_VERSION_INFO[0] >= 1 and ssl.OPENSSL_VERSION_INFO[1] >= 1 and ssl.OPENSSL_VERSION_INFO[2] >= 1:
+    import cloudscraper
+    craw = "cloudscraper"
+else:
+    import requests
+    craw = "requests"
 
 def request(dd_site):
     url = f"http://downdetector.com.br/fora-do-ar/{dd_site}/"
-    scraper = cloudscraper.create_scraper()
-    proxy = random.choice(proxy_list)
+    
     headers = {
         'User-Agent': random.choice(user_agent_list),
         'Accept-Language': 'en-US,en;q=0.9',
@@ -61,46 +63,47 @@ def request(dd_site):
         'DNT': '1',
         'Upgrade-Insecure-Requests': '1'
     }
-    # response = scraper.get(url, headers=headers, proxies={'http': proxy, 'https': proxy})
-    response = scraper.get(url, headers=headers)
-    return response
+    
+    try:
+        if craw == "cloudscraper":
+            scraper = cloudscraper.create_scraper()
+            response = scraper.get(url)
+        else:
+            response = requests.get(url, headers=headers)
+        
+        response.raise_for_status()  # Raise an error for bad status codes
+        return response
+    except Exception as e:
+        # print(f"Error fetching URL: {e}")
+        print(0)
+        sys.exit()
 
 def parse_result(status_text):
-    status_text = status_text.strip()
-    status_number = {'success': 1, 'warning': 2, 'danger': 3}.get(status_text, 0)
+    status_number = {'success': 1, 'warning': 2, 'danger': 3}.get(status_text.strip(), 0)
     print(status_number)
     sys.exit()
 
 def main():
     if len(sys.argv) < 2:
-        print("Informe o site que gostaria de verificar")
-        sys.exit(1)
-    site = sys.argv[1]
-
-    response = request(site)
-
-    if response.status_code != 200:
+        # print("Informe o site que gostaria de verificar")
         print(0)
         sys.exit()
+    
+    site = sys.argv[1]
+    response = request(site)
 
     try:
         bs = BeautifulSoup(response.text, 'html.parser')
         data_parse = bs.find("div", {"class": "entry-title"})
-        status = data_parse.text.strip() if data_parse else None
-        result = None
-
-        if not status:
-            raise ValueError("Status não encontrado.")
-
-        for param, value in PARAMS.items():
-            if re.compile(f"{param}.*").match(status):
-                result = value
-
-        if not result:
-            raise ValueError("Nenhum resultado correspondente encontrado.")
+        # data_parse = bs.select_one('.entry-title')
         
-        parse_result(result)
-    except Exception as err:
+        if data_parse:
+            # Assuming that the third class attribute contains the status
+            status = data_parse.attrs["class"][2].split('-')[1]
+            if status in ['success', 'warning', 'danger']:
+                parse_result(status)
+        
+        # Failover in case the above method fails
         failover = re.compile(r".*status: '(.*)',.*", re.MULTILINE)
         failover_status = failover.findall(response.text)
         if failover_status:
@@ -108,6 +111,10 @@ def main():
         else:
             print(0)
             sys.exit()
+    except Exception as err:
+        # print(f"Error parsing the response: {err}")
+        print(0)
+        sys.exit()
 
 if __name__ == '__main__':
     main()
