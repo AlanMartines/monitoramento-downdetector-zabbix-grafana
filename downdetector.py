@@ -53,7 +53,7 @@ else:
     craw = "requests"
 
 def request(dd_site):
-    url = f"http://downdetector.com.br/fora-do-ar/{dd_site}/"
+    url = f"https://downdetector.com.br/fora-do-ar/{dd_site}/"
     
     headers = {
         'User-Agent': random.choice(user_agent_list),
