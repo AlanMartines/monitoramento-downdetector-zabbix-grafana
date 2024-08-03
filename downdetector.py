@@ -93,7 +93,7 @@ def main():
             print(0)
             sys.exit()
     except Exception as err:
-        print(f"Erro ao processar a resposta: {err}")
+        # print(f"Erro ao processar a resposta: {err}")
         print(0)
         sys.exit()
 
