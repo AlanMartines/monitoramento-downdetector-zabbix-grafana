@@ -6,7 +6,7 @@ import random
 import re
 from bs4 import BeautifulSoup
 
-# Define lists for user agents and proxies
+# Lista de user agents para simular diferentes navegadores
 user_agent_list = [
     # Chrome
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -26,25 +26,7 @@ user_agent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 OPR/77.0.4054.172',
 ]
 
-proxy_list = [
-    'http://51.79.23.17:8050',
-    'http://187.94.220.85:8080',
-    'http://189.51.123.7:80',
-    'http://187.109.22.46:8080',
-    'http://189.50.9.33:8080',
-    'http://179.48.11.6:8085',
-    'http://201.20.65.234:9896',
-    'http://138.59.20.48:8090',
-    'http://45.6.203.224:8080',
-    'http://179.106.20.149:9090',
-    'http://189.124.85.225:7171',
-    'http://201.91.82.155:3128',
-    'http://177.70.174.103:8080',
-    'http://177.190.189.16:44443',
-    'http://191.7.8.246:80'
-]
-
-# Determine the best crawler based on SSL version
+# Determina o melhor crawler baseado na versão do SSL
 if ssl.OPENSSL_VERSION_INFO[0] >= 1 and ssl.OPENSSL_VERSION_INFO[1] >= 1 and ssl.OPENSSL_VERSION_INFO[2] >= 1:
     import cloudscraper
     craw = "cloudscraper"
@@ -71,10 +53,10 @@ def request(dd_site):
         else:
             response = requests.get(url, headers=headers)
         
-        response.raise_for_status()  # Raise an error for bad status codes
+        response.raise_for_status()  # Levanta um erro para códigos de status ruins
         return response
     except Exception as e:
-        # print(f"Error fetching URL: {e}")
+        # print(f"Erro ao buscar URL: {e}")
         print(0)
         sys.exit()
 
@@ -94,16 +76,15 @@ def main():
 
     try:
         bs = BeautifulSoup(response.text, 'html.parser')
-        data_parse = bs.find("div", {"class": "entry-title"})
-        # data_parse = bs.select_one('.entry-title')
+        # Busca pelo elemento <span> que contém o status
+        status_element = bs.find("span", class_=re.compile("color-(success|warning|danger)"))
         
-        if data_parse:
-            # Assuming that the third class attribute contains the status
-            status = data_parse.attrs["class"][2].split('-')[1]
-            if status in ['success', 'warning', 'danger']:
-                parse_result(status)
-        
-        # Failover in case the above method fails
+        if status_element:
+            status_class = status_element['class'][0]
+            status = status_class.split('-')[1]  # Extrai o status (success, warning, danger)
+            parse_result(status)
+
+        # Failover caso o método acima falhe
         failover = re.compile(r".*status: '(.*)',.*", re.MULTILINE)
         failover_status = failover.findall(response.text)
         if failover_status:
@@ -112,7 +93,7 @@ def main():
             print(0)
             sys.exit()
     except Exception as err:
-        # print(f"Error parsing the response: {err}")
+        print(f"Erro ao processar a resposta: {err}")
         print(0)
         sys.exit()
 
