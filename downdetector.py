@@ -5,6 +5,8 @@ import ssl
 import random
 import re
 from bs4 import BeautifulSoup
+from lxml.html import fromstring
+import requests
 
 # Lista de user agents para simular diferentes navegadores
 user_agent_list = [
@@ -26,16 +28,21 @@ user_agent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 OPR/77.0.4054.172',
 ]
 
-# Determina o melhor crawler baseado na versão do SSL
-if ssl.OPENSSL_VERSION_INFO[0] >= 1 and ssl.OPENSSL_VERSION_INFO[1] >= 1 and ssl.OPENSSL_VERSION_INFO[2] >= 1:
-    import cloudscraper
-    craw = "cloudscraper"
-else:
-    import requests
-    craw = "requests"
-
+def get_proxies():
+    url = 'https://free-proxy-list.net/'
+    response = requests.get(url)
+    parser = fromstring(response.text)
+    proxies = set()
+    for i in parser.xpath('//tbody/tr')[:299]:   #299 proxies max
+        proxy = ":".join([i.xpath('.//td[1]/text()') 
+        [0],i.xpath('.//td[2]/text()')[0]])
+        proxies.add(proxy)
+    return proxies
+  
 def request(dd_site):
     url = f"https://downdetector.com.br/fora-do-ar/{dd_site}/"
+    proxies = get_proxies()
+    set_proxy = random.choice(list(proxies))
     
     headers = {
         'User-Agent': random.choice(user_agent_list),
@@ -47,12 +54,7 @@ def request(dd_site):
     }
     
     try:
-        if craw == "cloudscraper":
-            scraper = cloudscraper.create_scraper()
-            response = scraper.get(url)
-        else:
-            response = requests.get(url, headers=headers)
-        
+        response = requests.get(url, timeout=10)
         response.raise_for_status()  # Levanta um erro para códigos de status ruins
         return response
     except Exception as e:
