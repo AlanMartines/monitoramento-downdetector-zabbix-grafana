@@ -54,7 +54,7 @@ def request(dd_site):
     }
     
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()  # Levanta um erro para códigos de status ruins
         return response
     except Exception as e:
