@@ -1,14 +1,19 @@
 #!/usr/bin/python3
+#########################################
+#                                       #
+# Author: Gabriel Padilha               #
+# Email: gabrielvargaspadilha@gmail.com #
+#                                       #
+#########################################
 
 import sys
 import ssl
-import random
 import re
+import random
 from bs4 import BeautifulSoup
-from lxml.html import fromstring
 import requests
+import cloudscraper
 
-# Lista de user agents para simular diferentes navegadores
 user_agent_list = [
     # Chrome
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -28,22 +33,34 @@ user_agent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 OPR/77.0.4054.172',
 ]
 
-def get_proxies():
-    url = 'https://free-proxy-list.net/'
-    response = requests.get(url)
-    parser = fromstring(response.text)
-    proxies = set()
-    for i in parser.xpath('//tbody/tr')[:299]:   #299 proxies max
-        proxy = ":".join([i.xpath('.//td[1]/text()') 
-        [0],i.xpath('.//td[2]/text()')[0]])
-        proxies.add(proxy)
-    return proxies
-  
+proxy_list = [
+    'http://51.79.23.17:8050',
+    'http://187.94.220.85:8080',
+    'http://189.51.123.7:80',
+    'http://187.109.22.46:8080',
+    'http://189.50.9.33:8080',
+    'http://179.48.11.6:8085',
+    'http://201.20.65.234:9896',
+    'http://138.59.20.48:8090',
+    'http://45.6.203.224:8080',
+    'http://179.106.20.149:9090',
+    'http://189.124.85.225:7171',
+    'http://201.91.82.155:3128',
+    'http://177.70.174.103:8080',
+    'http://177.190.189.16:44443',
+    'http://191.7.8.246:80'
+]
+
+PARAMS = {
+    'Relatórios de usuários indicam que não há problemas': 'success',
+    'Relatórios de usuários indicam potenciais problemas': 'warning',
+    'Relatórios de usuários indicam problemas': 'danger'
+}
+
 def request(dd_site):
-    url = f"https://downdetector.com.br/fora-do-ar/{dd_site}/"
-    proxies = get_proxies()
-    set_proxy = random.choice(list(proxies))
-    
+    url = f"http://downdetector.com.br/fora-do-ar/{dd_site}/"
+    scraper = cloudscraper.create_scraper()
+    proxy = random.choice(proxy_list)
     headers = {
         'User-Agent': random.choice(user_agent_list),
         'Accept-Language': 'en-US,en;q=0.9',
@@ -52,41 +69,46 @@ def request(dd_site):
         'DNT': '1',
         'Upgrade-Insecure-Requests': '1'
     }
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()  # Levanta um erro para códigos de status ruins
-        return response
-    except Exception as e:
-        # print(f"Erro ao buscar URL: {e}")
-        print(0)
-        sys.exit()
+    # response = scraper.get(url, headers=headers, proxies={'http': proxy, 'https': proxy})
+    response = scraper.get(url, headers=headers)
+    return response
 
 def parse_result(status_text):
-    status_number = {'success': 1, 'warning': 2, 'danger': 3}.get(status_text.strip(), 0)
+    status_text = status_text.strip()
+    status_number = {'success': 1, 'warning': 2, 'danger': 3}.get(status_text, 0)
     print(status_number)
     sys.exit()
 
 def main():
     if len(sys.argv) < 2:
-        # print("Informe o site que gostaria de verificar")
+        print("Informe o site que gostaria de verificar")
+        sys.exit(1)
+    site = sys.argv[1]
+
+    response = request(site)
+
+    if response.status_code != 200:
         print(0)
         sys.exit()
-    
-    site = sys.argv[1]
-    response = request(site)
 
     try:
         bs = BeautifulSoup(response.text, 'html.parser')
-        # Busca pelo elemento <span> que contém o status
-        status_element = bs.find("span", class_=re.compile("color-(success|warning|danger)"))
-        
-        if status_element:
-            status_class = status_element['class'][0]
-            status = status_class.split('-')[1]  # Extrai o status (success, warning, danger)
-            parse_result(status)
+        data_parse = bs.find("div", {"class": "entry-title"})
+        status = data_parse.text.strip() if data_parse else None
+        result = None
 
-        # Failover caso o método acima falhe
+        if not status:
+            raise ValueError("Status não encontrado.")
+
+        for param, value in PARAMS.items():
+            if re.compile(f"{param}.*").match(status):
+                result = value
+
+        if not result:
+            raise ValueError("Nenhum resultado correspondente encontrado.")
+        
+        parse_result(result)
+    except Exception as err:
         failover = re.compile(r".*status: '(.*)',.*", re.MULTILINE)
         failover_status = failover.findall(response.text)
         if failover_status:
@@ -94,10 +116,6 @@ def main():
         else:
             print(0)
             sys.exit()
-    except Exception as err:
-        # print(f"Erro ao processar a resposta: {err}")
-        print(0)
-        sys.exit()
 
 if __name__ == '__main__':
     main()
