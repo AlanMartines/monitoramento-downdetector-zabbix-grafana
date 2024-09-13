@@ -1,10 +1,4 @@
 #!/usr/bin/python3
-#########################################
-#                                       #
-# Author: Gabriel Padilha               #
-# Email: gabrielvargaspadilha@gmail.com #
-#                                       #
-#########################################
 
 import sys
 import ssl
@@ -33,34 +27,15 @@ user_agent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 OPR/77.0.4054.172',
 ]
 
-proxy_list = [
-    'http://51.79.23.17:8050',
-    'http://187.94.220.85:8080',
-    'http://189.51.123.7:80',
-    'http://187.109.22.46:8080',
-    'http://189.50.9.33:8080',
-    'http://179.48.11.6:8085',
-    'http://201.20.65.234:9896',
-    'http://138.59.20.48:8090',
-    'http://45.6.203.224:8080',
-    'http://179.106.20.149:9090',
-    'http://189.124.85.225:7171',
-    'http://201.91.82.155:3128',
-    'http://177.70.174.103:8080',
-    'http://177.190.189.16:44443',
-    'http://191.7.8.246:80'
-]
-
 PARAMS = {
-    'Relatórios de usuários indicam que não há problemas': 'success',
-    'Relatórios de usuários indicam potenciais problemas': 'warning',
-    'Relatórios de usuários indicam problemas': 'danger'
+    'Relatos de usuários indicam que não há problemas': 'success',
+    'Relatos de usuários indicam potenciais problemas': 'warning',
+    'Relatos de usuários indicam problemas': 'danger'
 }
 
 def request(dd_site):
     url = f"http://downdetector.com.br/fora-do-ar/{dd_site}/"
     scraper = cloudscraper.create_scraper()
-    proxy = random.choice(proxy_list)
     headers = {
         'User-Agent': random.choice(user_agent_list),
         'Accept-Language': 'en-US,en;q=0.9',
